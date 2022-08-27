@@ -1,0 +1,177 @@
+Hive : it is used to store very small chunk of data into users local device.
+		Hive is a quick, lightweight, NoSQL database for flutter and dart applications. 
+		Hive is truly helpful if you need a straightforward key-value database without numerous 
+		relations and truly simple to utilize. It is an offline database(store data in local devices). 
+		It has no native dependencies (it runs on Flutter Web!) can be the ideal choice.
+		
+		some local storage restricts us while storing different type of data such as string, object, and 
+		all but hive provides a way to not only store all primitive type data but also allows to
+		store user define data (objects).
+		
+		how to use :
+		import 'package:hive/hive.dart'; dependency :   hive_flutter: ^1.1.0
+		
+		initilize it in main() method ->  // await Hive.initFlutter();
+		then open a box for a perticular user in main()->  // await Hive.openBox('sortBox');
+		
+		before using this box : declare its object -> // late Box box1;
+		initilize it with perticular box -> // box1 = hive.box('sortBox');
+		
+		set value : box1.put(key, value) -> box1.put('state', 1)
+		retrieve value : box1.get('state')
+		
+		// it not stricky necessary to close box hive will do autometically when you close ur app
+
+		
+		
+Google Signi In and Drive intigration : (first need to create project in console account)
+			
+		//GoogleSignInAccount? user; -> store user account information like email name nd all
+		
+		 GoogleSignIn _googleSignin = GoogleSignIn.standard(scopes: [
+    drive.DriveApi.driveAppdataScope,
+    drive.DriveApi.driveFileScope,
+    drive.DriveApi.driveScope,
+  ]); 
+  
+  -> user varible get information from this signing and scope define permission that we want.
+  this scope we also need to specify in google cloud account.
+  
+  //user = _googleSignin.signing(); -> this how we authenticate user. nnd store its details in user.
+  
+  // drive intigration
+  drive also need to authenitcate user -> //var driveApi = drive.DriveApi(authenitcateClient);
+	
+	we need authenitcated client for driveApi but it needs more not only gmail login. so to do so we use
+	signed in users header
+	
+	// var authHeaders = await user?.authHeaders;  now we will authenticate this header to acess drive
+	// authenticateClient = GoogleAuthClient(authHeaders!); GoogleAuthClient is constructor.
+
+	class GoogleAuthClient extends http.BaseClient {
+  final Map<String, String> _headers;
+
+  final http.Client _client = new http.Client();          //-> this class give authenitcated client for drive
+
+  GoogleAuthClient(this._headers);
+
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _client.send(request..headers.addAll(_headers));
+  }
+}
+
+How to upload data to drive :
+
+var drivefile = drive.File(); // drive is from import
+drivefile.parents = ['appDataFolder'] -> to store in hidden way but in root
+driveFile.parents = [fid] -> to store in a perticular folder
+driveFile.name = 'banna.db' the name of file in which u want to store raw data
+
+now upload -> driveApi.files.create(driveFile, uploadMedia: drive.Media(
+                dbBackupFiledb.openRead(), dbBackupFiledb.lengthSync()));
+				
+dbBackupFiledb is from our local storage. to get the path of any file from local storage 
+
+File dbBackupFiledb = file(path to that file + '/filename');
+
+
+How to check for file on drive
+var driveList = DriveApi.files.list(
+	spaces : "appDataFolder" // to look in hidden file value can be "drive","root"
+	q : "name contains 'passwordManagerBackupFolder'" //all the files that contain this string in name
+);
+
+driveList.files.length -> give the total no of file. 
+it is a list perticular file can be accessed like: driveList.files[0].name // .id and all
+
+how to create folder in drive :
+
+var driveFile = new drive.File();
+driveFile.parents = [] =>  to specify where u want to store file
+
+driveFile.name = '' -> name of the folder
+   driveFile.mimeType = 'application/vnd.google-apps.folder'; to specify drive that this is folder
+    var folder = return await driveApi.files.create(driveFile);
+	folder.id folder.name => to get infor about that folder
+	
+	
+how to download : var shm = await driveApi.files.get(fileList.files[0].id,
+					downloadOptions: drive.DownloadOptions.fullMedia);
+
+how to write this retrived file to our local storage at specific place:
+
+//        List<int> dataStore = [];   
+			shm.stream.listen((data) {					//shm file that we have downloaded
+            dataStore.insertAll(dataStore.length, data);
+          }, onDone: () async {
+            await savedwal.writeAsBytes(dataStore);   savedwal is file on local storage
+            dataStore = [];							// savedwal = File(path to file + '/retrieved.db')
+            await db2.getData();
+          }, onError: (error) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(error),
+            ));
+
+          });
+   
+								
+								
+progress spinner : CircularProgressIndicator widget is used for this.
+
+	syntax :  CircularProgressIndicator({   Key? key,
+	double? value, 
+	Color? backgroundColor,  
+	Color? color,
+	Animation ? valueColor,  
+	double strokeWidth = 4.0,  
+	String? semanticsLabel,  
+	String? semanticsValue, })
+	
+	to show it in center with light dark background showDialog is used:
+	 showProgress(BuildContext context) async {
+    late BuildContext dialogCon;
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          dialogCon = context;
+          return Dialog(
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+              color: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  CircularProgressIndicator(
+                    color: Colors.teal,
+                  ),
+                  SizedBox(
+                    width: 20,
+                  ),
+                  Text("Syncing..."),
+                ],
+              ),
+            ),
+          );
+        },
+        useRootNavigator: true);
+
+    String msg = '';
+    try {
+      msg = await syncData(context);
+    } catch (e) {
+      showSnack(msg: e.toString());
+    }
+    showSnack(msg: msg);
+    Navigator.of(dialogCon, rootNavigator: true).pop();
+  }
+
+
+Date Conversion in specefic formate :
+	import 'package:intl/intl.dart'; is used
+	
+	store dateTime in DateTime type varible ex: DateTime nowdate = DateTime.Now();
+	this will give you a dateTime in 2022-08-23 15:59:50.2364 to fomate it below
+	
+	DateFormate function is used : DateFormate('patter of formate').formate(DateTime// DateTime.now());
+	DateFormat('dd/MM/yy').add_jm().format(dateFormat.parse(table[index]["timeDate"]))
+	
